@@ -1,20 +1,24 @@
-function Carousel (containerId = '#carousel', slideId = '.slide', interval = 3000) {
-  this.container = document.querySelector(containerId)
-  this.slides = this.container.querySelectorAll(slideId)
-  this.interval = interval
-}
+class Carousel {
+  constructor(p) {
+    const confing = ({ ...{ containerId: '#carousel', slideId: '.slide', interval: 2000 }, ...p })
+    this.container = document.querySelector(confing.containerId)
+    this.slideItems = this.container.querySelectorAll(confing.slideId)
+    this.interval = confing.interval
+    this.isPlaying = confing.isPlaying
+  }
 
-Carousel.prototype = {
   _initProps() {
-    this.SLIDES_COUNT = this.slides.length
+    this.controlsContainer = this.container.querySelector('#controls-container')
+    this.SLIDES_COUNT = this.slideItems.length
     this.CODE_ARROW_LEFT = 'ArrowLeft'
     this.CODE_ARROW_RIGHT = 'ArrowRight'
     this.CODE_SPACE = 'Space'
     this.FA_PAUSE = '<i class="fas fa-pause-circle"></i>'
     this.FA_PLAY = '<i class="fas fa-play-circle"></i>'
+
     this.currentSlide = 0
     this.isPlaying = true
-  },
+  }
 
   _initIndicators() {
     const indicators = document.createElement('div')
@@ -25,99 +29,110 @@ Carousel.prototype = {
       const indicator = document.createElement('div')
       indicator.setAttribute('class', i ? 'indicator' : 'indicator active')
       indicator.dataset.slideTo = `${i}`
-
       indicators.append(indicator)
     }
-
-    this.container.append (indicators)
+    this.container.append(indicators)
     this.indicatorsContainer = this.container.querySelector('#indicators-container')
     this.indicatorItems = this.indicatorsContainer.querySelectorAll('.indicator')
-  },
+  }
 
-  _initControls () {
+  _initControls() {
     const controls = document.createElement('div')
-    const PAUSE = '<span class="control control-pause" id="pause-btn"><i class="fas fa-pause-circle"></i></span>'
-    const PREV = '<span class="control control-prev" id="prev-btn"><i class="fas fa-angle-left"></i></span>'
-    const NEXT = '<span class="control control-next" id="next-btn"><i class="fas fa-angle-right"></i></span>'
+    const PAUSE = '<span id="pause-btn" class="control control-pause">' +
+      '<i class="fas fa-pause-circle"></i></span>'
+    const PREV = '<span id="prev-btn" class="control control-prev">' +
+      '<i class="fas fa-angle-left"></i></span>'
+    const NEXT = '<span id="next-btn" class="control control-next">' +
+      '<i class="fas fa-angle-right"></i></span>'
+
     controls.setAttribute('class', 'controls')
     controls.setAttribute('id', 'controls-container')
     controls.innerHTML = PAUSE + PREV + NEXT
-    this.container.append(controls)
+
+
+    this.container.append (controls)
     this.pauseBtn = this.container.querySelector('#pause-btn')
     this.prevBtn = this.container.querySelector('#prev-btn')
     this.nextBtn = this.container.querySelector('#next-btn')
-  },
+  }
 
-  _initListeners() {
+  _initListeners () {
+    document.addEventListener('keydown', this._pressKey.bind(this))
     this.pauseBtn.addEventListener('click', this.pausePlayHandler.bind(this))
     this.nextBtn.addEventListener('click', this.nextHandler.bind(this))
     this.prevBtn.addEventListener('click', this.prevHandler.bind(this))
     this.indicatorsContainer.addEventListener('click', this._indicateHandler.bind(this))
-    document.addEventListener('keydown', this.pressKey.bind(this))
-  },
-
-  _gotoNth: function (n) {
-    this.slides[this.currentSlide].classList.toggle('active')
-    this.indicatorItems[this.currentSlide].classList.toggle('active')
-    this.currentSlide = (n + this.SLIDES_COUNT) % this.SLIDES_COUNT
-    this.slides[this.currentSlide].classList.toggle('active')
-    this.indicatorItems[this.currentSlide].classList.toggle('active')
-  },
-
-  _gotoNext() {
-    this._gotoNth(this.currentSlide + 1)
-  },
-
-  _gotoPrev() {
-    this._gotoNth(this.currentSlide - 1)
-  },
+    this.container.addEventListener('mouseenter', this.pauseHandler.bind(this))
+    this.container.addEventListener('mouseleave', this.playHandler.bind(this))
+  }
 
   _indicateHandler(e) {
-    const target = e.target
-    if (target.classList.contains('indicator')) {
+    const { target } = e
+
+    if (target && target.classList.contains('indicator')) {
       this.pauseHandler()
       this._gotoNth(+target.dataset.slideTo)
     }
-  },
+  }
+
+  _pressKey(e) {
+    const { code } = e
+    e.preventDefault()
+    if (code === this.CODE_ARROW_LEFT) this.prevHandler()
+    if (code === this.CODE_ARROW_RIGHT) this.nextHandler()
+    if (code === this.CODE_SPACE) this.pausePlayHandler()
+  }
+
+  _gotoNth(n) {
+    this.slideItems[this.currentSlide].classList.toggle('active')
+    this.indicatorItems[this.currentSlide].classList.toggle('active')
+    this.currentSlide = (n + this.SLIDES_COUNT) % this.SLIDES_COUNT
+    this.slideItems[this.currentSlide].classList.toggle('active')
+    this.indicatorItems[this.currentSlide].classList.toggle('active')
+  }
+
+  _gotoNext() {
+    this._gotoNth(this.currentSlide + 1)
+  }
+
+  _gotoPrev() {
+    this._gotoNth(this.currentSlide - 1)
+  }
 
   _tick() {
-    this.timerId = setInterval(() => this._gotoNext(), this.interval)
-  },
+    this.timerID = setInterval(() => this._gotoNext(), this.interval)
+  }
 
   pauseHandler() {
+    if (!this.isPlaying) return
     this.isPlaying = false
-    clearInterval(this.timerId)
+    clearInterval(this.timerID)
     this.pauseBtn.innerHTML = this.FA_PLAY
-  },
+  }
 
   playHandler() {
+    if (this.isPlaying) return
     this.isPlaying = true
     this.pauseBtn.innerHTML = this.FA_PAUSE
     this._tick()
-  },
+  }
 
   pausePlayHandler() {
     this.isPlaying
       ? this.pauseHandler()
       : this.playHandler()
-  },
-
-  nextHandler() {
-    this.pauseHandler()
-    this._gotoNext()
-  },
+  }
 
   prevHandler() {
     this.pauseHandler()
     this._gotoPrev()
-  },
+  }
 
-  pressKey(e) {
-    const code = e.code
-    if (code === this.CODE_ARROW_LEFT) this.prevHandler()
-    if (code === this.CODE_ARROW_RIGHT) this.nextHandler()
-    if (code === this.CODE_SPACE) this.pausePlayHandler()
-  },
+  nextHandler() {
+    this.pauseHandler()
+    this._gotoNext()
+  }
+
 
   init() {
     this._initProps()
@@ -126,6 +141,7 @@ Carousel.prototype = {
     this._initListeners()
     this._tick()
   }
+
 }
 
-Carousel.prototype.constructor = Carousel
+export default Carousel
